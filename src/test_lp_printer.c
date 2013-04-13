@@ -23,6 +23,9 @@ main(int argc, char** argv)
   /* Render backend */
   struct rbi rbi;
   struct rb_context* rb_ctxt = NULL;
+  /* LP data structure */
+  struct lp* lp = NULL;
+  struct lp_printer* lp_printer = NULL;
 
   if(argc != 3) {
     printf("usage: %s RB_DRIVER FONT\n", argv[0]);
@@ -50,8 +53,20 @@ main(int argc, char** argv)
   CHECK(rbi_init(driver_name, &rbi), 0);
   RBI(&rbi, create_context(NULL, &rb_ctxt));
 
-  /* TODO */
+  LP(create(&rbi, rb_ctxt, NULL, &lp));
 
+  CHECK(lp_printer_create(NULL, NULL), LP_INVALID_ARGUMENT);
+  CHECK(lp_printer_create(lp, NULL), LP_INVALID_ARGUMENT);
+  CHECK(lp_printer_create(NULL, &lp_printer), LP_INVALID_ARGUMENT);
+  CHECK(lp_printer_create(lp, &lp_printer), LP_NO_ERROR);
+
+  CHECK(lp_printer_ref_get(NULL), LP_INVALID_ARGUMENT);
+  CHECK(lp_printer_ref_get(lp_printer), LP_NO_ERROR);
+  CHECK(lp_printer_ref_put(NULL), LP_INVALID_ARGUMENT);
+  CHECK(lp_printer_ref_put(lp_printer), LP_NO_ERROR);
+  CHECK(lp_printer_ref_put(lp_printer), LP_NO_ERROR);
+
+  LP(ref_put(lp));
   RBI(&rbi, context_ref_put(rb_ctxt));
   CHECK(rbi_shutdown(&rbi), 0);
   WM(device_ref_put(wm_dev));

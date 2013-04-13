@@ -7,13 +7,10 @@
 #include <string.h>
 
 #define LP_SIZEOF_GLYPH_VERTEX ((3/*pos*/ + 2/*tex*/ + 3/*col*/)*sizeof(float))
-
-enum {
-  LP_GLYPH_ATTRIB_POSITION_ID,
-  LP_GLYPH_ATTRIB_TEXCOORD_ID,
-  LP_GLYPH_ATTRIB_COLOR_ID,
-  LP_GLYPH_ATTRIBS_COUNT
-};
+#define LP_GLYPH_ATTRIB_POSITION_ID 0
+#define LP_GLYPH_ATTRIB_TEXCOORD_ID 1
+#define LP_GLYPH_ATTRIB_COLOR_ID 2
+#define LP_GLYPH_ATTRIBS_COUNT 3
 
 struct lp_printer {
   struct ref ref;
