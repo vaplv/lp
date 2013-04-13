@@ -216,6 +216,8 @@ main(int argc, char** argv)
 
   FONT(rsrc_ref_put(font_rsrc));
   FONT(system_ref_put(font_sys));
+  RBI(&rbi, context_ref_put(rb_ctxt));
+  CHECK(rbi_shutdown(&rbi), 0);
   WM(window_ref_put(window));
   WM(device_ref_put(device));
 
