@@ -11,10 +11,11 @@
 #endif
 
 #ifndef NDEBUG
-  #define LP(func) ASSERT(LP_NO_ERROR == lp_##func)
+  #define LP_CALL(func) ASSERT(LP_NO_ERROR == func)
 #else
-  #define LP(func) lp_##func
+  #define LP_CALL(func) func
 #endif
+#define LP(func) LP_CALL(lp_##func)
 
 struct lp;
 struct mem_allocator;
