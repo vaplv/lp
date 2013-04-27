@@ -22,7 +22,7 @@ main(int argc, char** argv)
   FILE* file = NULL;
   const uint8_t nb_glyphs = 94;
   const uint8_t nb_duplicated_glyphs = 5;
-  const uint8_t total_nb_glyphs = nb_glyphs + nb_duplicated_glyphs;
+  const int total_nb_glyphs = nb_glyphs + nb_duplicated_glyphs;
   const unsigned char* bmp_cache = NULL;
   uint32_t w = 0;
   uint32_t h = 0;
@@ -98,7 +98,8 @@ main(int argc, char** argv)
     FONT(rsrc_get_glyph(font_rsrc, character, &font_glyph));
     FONT(glyph_get_bitmap(font_glyph, true, &width, &height, &Bpp, NULL));
 
-    glyph_bitmap_list[i]=MEM_CALLOC(&mem_default_allocator, width*height, Bpp);
+    glyph_bitmap_list[i] = MEM_CALLOC
+      (&mem_default_allocator, (size_t)width*height, (size_t)Bpp);
     NCHECK(glyph_bitmap_list[i], NULL);
     FONT(glyph_get_bitmap
       (font_glyph, true, &width, &height, &Bpp, glyph_bitmap_list[i]));

@@ -78,7 +78,7 @@ struct node {
   int extendable_flag;
 };
 
-#define GLYPH_BORDER 1
+#define GLYPH_BORDER 1u
 #define IS_LEAF(n) (!((n)->left || (n)->right))
 
 static struct node*
@@ -98,15 +98,15 @@ insert_rect
       ret_node = insert_rect(allocator, node->right, width, height);
   } else {
     /* Adjust the width and height in order to take care of the glyph border */
-    const uint16_t width_adjusted = width + GLYPH_BORDER;
-    const uint16_t height_adjusted = height + GLYPH_BORDER;
+    const uint16_t width_adjusted = (uint16_t)(width + GLYPH_BORDER);
+    const uint16_t height_adjusted = (uint16_t)(height + GLYPH_BORDER);
 
     if(width_adjusted > node->width || height_adjusted > node->height) {
       /* The leaf is too small to store the rectangle. */
       ret_node = NULL;
     } else {
-      const size_t w = node->width - width_adjusted;
-      const size_t h = node->height - height_adjusted;
+      const uint32_t w = node->width - width_adjusted;
+      const uint32_t h = node->height - height_adjusted;
 
       node->left = MEM_CALLOC(allocator, 1, sizeof(struct node));
       ASSERT(node->left);
@@ -213,7 +213,7 @@ copy_bitmap
   for(i = 0; i < height; ++i) {
     unsigned char* dst_row = dst + i * dst_pitch;
     const unsigned char* src_row = src + i * src_pitch;
-    memcpy(dst_row, src_row, width * Bpp);
+    memcpy(dst_row, src_row, (size_t)(width * Bpp));
   }
 }
 
@@ -258,7 +258,7 @@ fill_font_cache
     const uint32_t h = node->height - GLYPH_BORDER;
     const uint32_t x = node->x == 0 ? GLYPH_BORDER : node->x;
     const uint32_t y = node->y == 0 ? GLYPH_BORDER : node->y;
-    const uint32_t glyph_bmp_size =
+    const uint32_t glyph_bmp_size = (uint32_t)
       glyph_desc->bitmap.width
     * glyph_desc->bitmap.height
     * glyph_desc->bitmap.bytes_per_pixel;
@@ -275,8 +275,8 @@ fill_font_cache
 
     glyph->pos[0].x = (float)glyph_desc->bitmap_left;
     glyph->pos[0].y = (float)glyph_desc->bitmap_top;
-    glyph->pos[1].x = (float)(glyph_desc->bitmap_left + w);
-    glyph->pos[1].y = (float)(glyph_desc->bitmap_top + h);
+    glyph->pos[1].x = (float)(glyph_desc->bitmap_left + (int)w);
+    glyph->pos[1].y = (float)(glyph_desc->bitmap_top + (int)h);
 
     /* The glyph bitmap size may be equal to zero (e.g.: the space char) */
     if(0 != glyph_bmp_size) {
@@ -287,7 +287,7 @@ fill_font_cache
         (dst,
          cache_pitch,
          glyph_desc->bitmap.buffer,
-         glyph_desc->bitmap.width * cache_Bpp,
+         (uint32_t)(glyph_desc->bitmap.width * cache_Bpp),
          glyph_desc->bitmap.width,
          glyph_desc->bitmap.height,
          cache_Bpp);
@@ -302,9 +302,9 @@ cmp_glyph_desc(const void* a, const void* b)
 {
   const struct lp_font_glyph_desc* glyph0 = a;
   const struct lp_font_glyph_desc* glyph1 = b;
-  const size_t area0 = glyph0->bitmap.width * glyph0->bitmap.height;
-  const size_t area1 = glyph1->bitmap.width * glyph1->bitmap.height;
-  return (int)(area1 - area0);
+  const int area0 = glyph0->bitmap.width * glyph0->bitmap.height;
+  const int area1 = glyph1->bitmap.width * glyph1->bitmap.height;
+  return area1 - area0;
 }
 
 static enum rb_tex_format
@@ -354,8 +354,8 @@ create_default_glyph
    struct lp_font_glyph_desc* glyph)
 {
   unsigned char* buffer = NULL;
-  const uint32_t pitch = width * Bpp;
-  const uint32_t size = pitch * height;
+  const int pitch = width * Bpp;
+  const int size = pitch * height;
   enum lp_error lp_err = LP_NO_ERROR;
 
   ASSERT(glyph && allocator);
@@ -367,14 +367,14 @@ create_default_glyph
   glyph->bitmap.height = height;
   glyph->bitmap.bytes_per_pixel = Bpp;
   if(size) {
-    buffer = MEM_CALLOC(allocator, 1, size);
+    buffer = MEM_CALLOC(allocator, 1, (size_t)size);
     if(NULL == buffer) {
       lp_err =  LP_MEMORY_ERROR;
       goto error;
     } else {
       uint16_t y = 0;
-      memset(buffer, 0xFF, pitch);
-      memset(buffer + (height - 1) * pitch, 0xFF, pitch);
+      memset(buffer, 0xFF, (size_t)pitch);
+      memset(buffer + (height - 1) * pitch, 0xFF, (size_t)pitch);
       for(y = 1; y < height - 1; ++y) {
         memset(buffer + y * pitch, 0xFF, Bpp);
         memset(buffer + y * pitch + (width - 1) * Bpp, 0xFF, Bpp);
@@ -539,8 +539,13 @@ lp_font_set_data
   font->min_glyph_width = UINT16_MAX;
   font->min_glyph_pos_y = INT16_MAX;
   for(i = 0; i < nb_glyphs; ++i) {
+    const int16_t bmp_top = (int16_t)glyph_lst[i].bitmap_top;
+    ASSERT
+      (  glyph_lst[i].bitmap_top <= INT16_MAX 
+      && glyph_lst[i].bitmap_top >= INT16_MIN );
+
     font->min_glyph_width = MIN(font->min_glyph_width, glyph_lst[i].width);
-    font->min_glyph_pos_y = MIN(font->min_glyph_pos_y, glyph_lst[i].bitmap_top);
+    font->min_glyph_pos_y = MIN(font->min_glyph_pos_y, bmp_top);
     max_bmp_width = MAX(max_bmp_width, glyph_lst[i].bitmap.width);
     max_bmp_height = MAX(max_bmp_height, glyph_lst[i].bitmap.height);
   }
@@ -604,8 +609,8 @@ lp_font_set_data
     node = insert_rect(font->lp->allocator, root, width, height);
     while(!node) {
       const size_t max_tex_size = font->lp->rb_cfg.max_tex_size;
-      const uint16_t extend_x = MAX(width / 2, 1);
-      const uint16_t extend_y = MAX(height / 2, 1);
+      const uint16_t extend_x = (uint16_t)MAX(width / 2, 1);
+      const uint16_t extend_y = (uint16_t)MAX(height / 2, 1);
       const bool can_extend_w = (cache_width + extend_x) <= max_tex_size;
       const bool can_extend_h = (cache_height + extend_y) <= max_tex_size;
       const bool extend_w = can_extend_w && cache_width < cache_height;
