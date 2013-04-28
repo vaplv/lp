@@ -6,6 +6,7 @@
 #include <snlsys/math.h>
 #include <snlsys/mem_allocator.h>
 #include <float.h>
+#include <limits.h>
 #include <string.h>
 
 #define LP_SIZEOF_GLYPH_VERTEX ((3/*pos*/ + 2/*tex*/ + 3/*col*/)*sizeof(float))
@@ -16,6 +17,8 @@
 #define LP_GLYPH_VERTICES_COUNT 4
 #define LP_GLYPH_INDICES_COUNT 6
 
+#define LP_TAB_SPACES_COUNT 4 /* This may be a configurable parameter */
+
 /* Minimal scratch data structure */
 struct scratch {
   struct mem_allocator* allocator;
@@ -24,9 +27,15 @@ struct scratch {
   size_t id;
 };
 
+/* Window coordinate of the printable zone */
+struct viewport {
+  int x0, y0, x1, y1;
+};
+
 struct lp_printer {
   struct ref ref;
   struct scratch scratch;
+  struct viewport viewport;
   struct lp* lp;
 
   struct lp_font* font;
@@ -46,7 +55,7 @@ struct lp_printer {
   struct rb_uniform* uniform_bias;
 
   uint32_t max_nb_glyphs; /* Maximum number glyphs that the printer can draw */
-  uint32_t nb_glyphs; /* Number of glyphs currently drawn by the printer */
+  uint32_t nb_glyphs; /* Number of glyphs printed but not flushed */
 };
 
 /*******************************************************************************
@@ -260,6 +269,7 @@ printer_storage(struct lp_printer* printer, const uint32_t max_nb_glyphs)
     printer->glyph_index_buffer = NULL;
   }
 
+  printer->nb_glyphs = 0;
   printer->max_nb_glyphs = max_nb_glyphs;
   if(max_nb_glyphs == 0) {
     const int attr_id_list[LP_GLYPH_ATTRIBS_COUNT] = {
@@ -407,6 +417,214 @@ lp_printer_set_font(struct lp_printer* printer, struct lp_font* font)
 
     setup_font(printer);
   }
+  return LP_NO_ERROR;
+}
+
+enum lp_error
+lp_printer_set_viewport
+  (struct lp_printer* printer,
+   const int x,
+   const int y,
+   const int width,
+   const int height)
+{
+  if(!printer || width < 0 || height < 0)
+    return LP_INVALID_ARGUMENT;
+
+  printer->viewport.x0 = x;
+  printer->viewport.y0 = y;
+  printer->viewport.x1 = x + width;
+  printer->viewport.y1 = y + height;
+  return LP_NO_ERROR;
+}
+
+enum lp_error
+lp_printer_print_wstring
+  (struct lp_printer* printer,
+   const int x,
+   const int y,
+   const wchar_t* wstr,
+   const float color[3])
+{
+  if(!printer || !wstr || !color || !printer->font)
+    return LP_INVALID_ARGUMENT;
+  if(printer->viewport.x1 <= printer->viewport.x0 
+  || printer->viewport.y1 <= printer->viewport.y0)  /* No printable zone */
+    return LP_INVALID_ARGUMENT;
+  if(x >= printer->viewport.x1 || y >= printer->viewport.y1) /* Out of bounds */
+    return LP_NO_ERROR;
+
+  struct lp_font_metrics font_metrics;
+  LP(font_get_metrics(printer->font, &font_metrics));
+
+  const int line_width = printer->viewport.x1 - x;
+  int line_width_remaining = line_width;
+  int line_x = x;
+  int line_y = y;
+
+  size_t i = 0;
+  for(i = 0; wstr[i] != L'\0'; ++i) {
+    struct lp_font_glyph glyph;
+    int glyph_width_adjusted = 0;
+
+    switch(wstr[i]) {
+      case L'\t': /* Tabulation */
+        LP(font_get_glyph(printer->font, L' ', &glyph));
+        glyph_width_adjusted = glyph.width * LP_TAB_SPACES_COUNT;
+        break;
+      case L'\n': /* New line */
+        glyph_width_adjusted = INT_MAX;
+        break;
+      default: /* Common characters */
+        LP(font_get_glyph(printer->font, wstr[i], &glyph));
+        glyph_width_adjusted = glyph.width;
+        break;
+    }
+
+    /* Update remaining width */
+    if(line_width_remaining >= glyph_width_adjusted) {
+      line_width_remaining -= glyph_width_adjusted;
+    } else { /* Wrap the line */
+      line_width_remaining = line_width;
+      line_x = x;
+      line_y = line_y + font_metrics.line_space;
+      if(glyph_width_adjusted == INT_MAX) { /* <=> New line */
+        continue;
+      }
+    }
+
+    /* The char lies inside the printable viewport */
+    if(line_x >= printer->viewport.x0
+    && line_y >= printer->viewport.y0
+    && line_x + glyph_width_adjusted <= printer->viewport.x1
+    && line_y + font_metrics.line_space <= printer->viewport.y1) {
+      const struct { float x, y; } glyph_pos_adjusted[2] = {
+        [0]={ glyph.pos[0].x + (float)line_x, glyph.pos[0].y + (float)line_y },
+        [1]={ glyph.pos[1].x + (float)line_x, glyph.pos[1].y + (float)line_y }
+      };
+
+      float vertex[LP_SIZEOF_GLYPH_VERTEX / sizeof(float)];
+      #define SET_POS(Dst, X, Y, Z) Dst[0] = (X), Dst[1] = (Y), Dst[2] = (Z)
+      #define SET_TEX(Dst, U, V)    Dst[3] = (U), Dst[4] = (V)
+      #define SET_COL(Dst, R, G, B) Dst[5] = (R), Dst[6] = (G), Dst[6] = (B)
+
+      /* It is sufficient to set the color only of the first vertex */
+      SET_COL(vertex, color[0], color[1], color[2]);
+
+      /* Bottom left */
+      SET_POS(vertex, glyph_pos_adjusted[0].x, glyph_pos_adjusted[1].y, 0.f);
+      SET_TEX(vertex, glyph.tex[0].x, glyph.tex[1].y);
+      scratch_push_back(&printer->scratch, vertex, sizeof(vertex));
+      /* Top left */
+      SET_POS(vertex, glyph_pos_adjusted[0].x, glyph_pos_adjusted[0].y, 0.f);
+      SET_TEX(vertex, glyph.tex[0].x, glyph.tex[0].y);
+      scratch_push_back(&printer->scratch, vertex, sizeof(vertex));
+      /* Top right */
+      SET_POS(vertex, glyph_pos_adjusted[1].x, glyph_pos_adjusted[0].y, 0.f);
+      SET_TEX(vertex, glyph.tex[1].x, glyph.tex[0].y);
+      scratch_push_back(&printer->scratch, vertex, sizeof(vertex));
+      /* Bottom right */
+      SET_POS(vertex, glyph_pos_adjusted[1].x, glyph_pos_adjusted[1].y, 0.f);
+      SET_TEX(vertex, glyph.tex[1].x, glyph.tex[1].y);
+      scratch_push_back(&printer->scratch, vertex, sizeof(vertex));
+
+      #undef SET_POS
+      #undef SET_TEX
+      #undef SET_COL
+
+      ++printer->nb_glyphs;
+    }
+
+    line_x += glyph_width_adjusted;
+
+    ASSERT(printer->nb_glyphs <= printer->max_nb_glyphs);
+    if(printer->nb_glyphs == printer->max_nb_glyphs) {
+      LP(printer_flush(printer));
+    }
+  }
+  return LP_NO_ERROR;
+}
+
+enum lp_error
+lp_printer_flush(struct lp_printer* printer)
+{
+  if(!printer)
+    return LP_INVALID_ARGUMENT;
+
+  if(printer->nb_glyphs == 0)
+    return LP_NO_ERROR;
+
+  /* No printable zone => Draw nothing */
+  if(printer->viewport.x1 <= printer->viewport.x0 
+  || printer->viewport.y1 <= printer->viewport.y0) { 
+    scratch_clear(&printer->scratch);
+    return LP_NO_ERROR;
+  }
+
+  struct rbi* rbi = printer->lp->rbi;
+  struct rb_context* rb_ctxt = printer->lp->rb_ctxt;
+
+  void* data = scratch_buffer(&printer->scratch);
+  const size_t size = 
+    4 /* vertices per glyph */ * printer->nb_glyphs * LP_SIZEOF_GLYPH_VERTEX;
+  RBI(rbi, buffer_data(printer->glyph_vertex_buffer, 0, (int)size, data));
+
+  const struct rb_depth_stencil_desc depth_stencil_desc = {
+    .enable_depth_test = 0,
+    .enable_depth_write = 0,
+    .enable_stencil_test = 0,
+    .front_face_op.write_mask = 0,
+    .back_face_op.write_mask = 0
+  };
+  const struct rb_viewport_desc viewport_desc = {
+    .x = printer->viewport.x0,
+    .y = printer->viewport.y0,
+    .width = printer->viewport.x1 - printer->viewport.x0,
+    .height = printer->viewport.y1 - printer->viewport.y0
+  };
+  struct rb_blend_desc blend_desc = {
+    .enable = 1,
+    .src_blend_RGB = RB_BLEND_SRC_ALPHA,
+    .src_blend_Alpha = RB_BLEND_ONE,
+    .dst_blend_RGB = RB_BLEND_ONE_MINUS_SRC_ALPHA,
+    .dst_blend_Alpha = RB_BLEND_ZERO,
+    .blend_op_RGB = RB_BLEND_OP_ADD,
+    .blend_op_Alpha = RB_BLEND_OP_ADD
+  };
+  const float scale[3] = { 
+    2.f/(float)viewport_desc.width,
+    2.f/(float)viewport_desc.height,
+    1.f
+  };
+  const float bias[3] = { -1.f, -1.f, 0.f };
+  struct rb_tex2d* font_tex = NULL;
+  const unsigned int font_tex_unit = 0;
+
+  LP(font_get_texture(printer->font, &font_tex));
+
+  RBI(rbi, depth_stencil(rb_ctxt, &depth_stencil_desc));
+  RBI(rbi, viewport(rb_ctxt, &viewport_desc));
+  RBI(rbi, blend(rb_ctxt, &blend_desc));
+
+  RBI(rbi, bind_tex2d(rb_ctxt, font_tex, font_tex_unit));
+  RBI(rbi, bind_sampler(rb_ctxt, printer->sampler, font_tex_unit));
+
+  RBI(rbi, bind_program(rb_ctxt, printer->shading_program));
+  RBI(rbi, uniform_data(printer->uniform_sampler, 1, &font_tex_unit));
+  RBI(rbi, uniform_data(printer->uniform_scale, 1, scale));
+  RBI(rbi, uniform_data(printer->uniform_bias, 1, bias));
+
+  RBI(rbi, bind_vertex_array(rb_ctxt, printer->vertex_array));
+  RBI(rbi, draw_indexed
+    (rb_ctxt, RB_TRIANGLE_LIST, printer->nb_glyphs * LP_GLYPH_INDICES_COUNT));
+
+  blend_desc.enable = 0;
+  RBI(rbi, blend(rb_ctxt, &blend_desc));
+  RBI(rbi, bind_program(rb_ctxt, NULL));
+  RBI(rbi, bind_vertex_array(rb_ctxt, NULL));
+  RBI(rbi, bind_tex2d(rb_ctxt, NULL, font_tex_unit));
+  RBI(rbi, bind_sampler(rb_ctxt, NULL, font_tex_unit));
+
   return LP_NO_ERROR;
 }
 
