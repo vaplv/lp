@@ -302,8 +302,9 @@ printer_storage(struct lp_printer* printer, const uint32_t max_nb_glyphs)
     LP_CALL(scratch_reserve(&printer->scratch, MAX(vbufsiz, ibufsiz)));
     scratch_clear(&printer->scratch);
     for(i = 0; i < max_nb_glyphs; ++i) {
+      const unsigned id_first = i * LP_GLYPH_VERTICES_COUNT;
       const unsigned int indices[LP_GLYPH_INDICES_COUNT] = {
-        0+i, 1+i, 3+i, 3+i, 1+i, 2+i
+        0+id_first, 1+id_first, 3+id_first, 3+id_first, 1+id_first, 2+id_first
       };
       scratch_push_back(&printer->scratch, indices, sizeof(indices));
     }
@@ -321,6 +322,8 @@ printer_storage(struct lp_printer* printer, const uint32_t max_nb_glyphs)
     RBI(printer->lp->rbi, vertex_index_array
       (printer->vertex_array, printer->glyph_index_buffer));
   }
+  /* Clear the scratch for subsecquent uses */
+  scratch_clear(&printer->scratch);
 }
 
 static void
@@ -508,7 +511,7 @@ lp_printer_print_wstring
       float vertex[LP_SIZEOF_GLYPH_VERTEX / sizeof(float)];
       #define SET_POS(Dst, X, Y, Z) Dst[0] = (X), Dst[1] = (Y), Dst[2] = (Z)
       #define SET_TEX(Dst, U, V)    Dst[3] = (U), Dst[4] = (V)
-      #define SET_COL(Dst, R, G, B) Dst[5] = (R), Dst[6] = (G), Dst[6] = (B)
+      #define SET_COL(Dst, R, G, B) Dst[5] = (R), Dst[6] = (G), Dst[7] = (B)
 
       /* It is sufficient to set the color only of the first vertex */
       SET_COL(vertex, color[0], color[1], color[2]);
@@ -628,6 +631,7 @@ lp_printer_flush(struct lp_printer* printer)
   RBI(rbi, bind_sampler(rb_ctxt, NULL, font_tex_unit));
 
   printer->nb_glyphs = 0;
+  scratch_clear(&printer->scratch);
 
   return LP_NO_ERROR;
 }
