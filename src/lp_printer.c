@@ -308,7 +308,7 @@ printer_storage(struct lp_printer* printer, const uint32_t max_nb_glyphs)
       scratch_push_back(&printer->scratch, indices, sizeof(indices));
     }
     buffer_desc.size = vbufsiz;
-    buffer_desc.target = RB_BIND_VERTEX_BUFFER;
+    buffer_desc.target = RB_BIND_INDEX_BUFFER;
     buffer_desc.usage = RB_USAGE_IMMUTABLE;
     RBI(printer->lp->rbi, create_buffer
       (printer->lp->rb_ctxt, &buffer_desc, scratch_buffer(&printer->scratch),
@@ -409,7 +409,9 @@ lp_printer_set_font(struct lp_printer* printer, struct lp_font* font)
     return LP_INVALID_ARGUMENT;
 
   if(font != printer->font) {
-    LP(font_ref_put(printer->font));
+    if(printer->font) {
+      LP(font_ref_put(printer->font));
+    }
     LP(font_ref_get(font));
     LP(font_signal_connect
       (font, LP_FONT_SIGNAL_DATA_UPDATE, &printer->on_font_data_update));
@@ -624,6 +626,8 @@ lp_printer_flush(struct lp_printer* printer)
   RBI(rbi, bind_vertex_array(rb_ctxt, NULL));
   RBI(rbi, bind_tex2d(rb_ctxt, NULL, font_tex_unit));
   RBI(rbi, bind_sampler(rb_ctxt, NULL, font_tex_unit));
+
+  printer->nb_glyphs = 0;
 
   return LP_NO_ERROR;
 }

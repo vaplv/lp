@@ -59,6 +59,15 @@ set_target_properties(lp PROPERTIES DEFINE_SYMBOL LP_SHARED_BUILD)
 target_link_libraries(lp ${snlsys_LIBRARY} ${sl_LIBRARY} ${rbi_LIBRARY})
 
 ################################################################################
+# Example
+################################################################################
+add_executable(eg_lp_printer eg_lp_printer.c)
+target_link_libraries(eg_lp_printer debug
+  lp ${snlsys-dbg_LIBRARY} ${font-rsrc-dbg_LIBRARY} ${wm-glfw-dbg_LIBRARY})
+target_link_libraries(eg_lp_printer optimized
+  lp ${snlsys_LIBRARY} ${font-rsrc_LIBRARY} ${wm-glfw_LIBRARY})
+
+################################################################################
 # Add tests
 ################################################################################
 macro(check_font font suffix)
@@ -78,9 +87,9 @@ check_library(rb-null)
 
 # Test font
 add_executable(test_lp_font test_lp_font.c)
-target_link_libraries(test_lp_font
+target_link_libraries(test_lp_font debug
   lp ${snlsys-dbg_LIBRARY} ${font-rsrc-dbg_LIBRARY} ${wm-glfw-dbg_LIBRARY})
-target_link_libraries(test_lp_font
+target_link_libraries(test_lp_font optimized
   lp ${snlsys_LIBRARY} ${font-rsrc_LIBRARY} ${wm-glfw_LIBRARY})
 
 if(Tower_Print_FONT AND rb-null_LIBRARY)
