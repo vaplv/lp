@@ -90,11 +90,13 @@ main(int argc, char** argv)
     lp_font_glyph_desc_list[i].bitmap_top = font_glyph_desc.bbox.y_min;
 
     FONT(glyph_get_bitmap(font_glyph, true, &width, &height, &Bpp, NULL));
-    glyph_bitmap_list[i] = MEM_CALLOC
-      (&mem_default_allocator, (size_t)width*height, (size_t)Bpp);
-    NCHECK(glyph_bitmap_list[i], NULL);
-    FONT(glyph_get_bitmap
-      (font_glyph, true, &width, &height, &Bpp, glyph_bitmap_list[i]));
+    if(width && height ) {
+      glyph_bitmap_list[i] = MEM_CALLOC
+        (&mem_default_allocator, (size_t)width*height, (size_t)Bpp);
+      NCHECK(glyph_bitmap_list[i], NULL);
+      FONT(glyph_get_bitmap
+        (font_glyph, true, &width, &height, &Bpp, glyph_bitmap_list[i]));
+    }
 
     lp_font_glyph_desc_list[i].bitmap.width = width;
     lp_font_glyph_desc_list[i].bitmap.height = height;
@@ -121,7 +123,7 @@ main(int argc, char** argv)
     RBI(&rbi, clear
       (rb_ctxt, RB_CLEAR_COLOR_BIT, (float[]){0.f, 0.f, 0.f}, 0.f, 0));
     LP(printer_print_wstring
-      (lp_printer, 50, 50, L"Hello world", (float[]){1.f, 1.f, 1.f}));
+      (lp_printer, 50, 50, L"Hello world é", (float[]){1.f, 1.f, 1.f}));
     LP(printer_flush(lp_printer));
     WM(swap(window));
   }
