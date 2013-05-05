@@ -54,7 +54,7 @@ main(int argc, char** argv)
   struct font_system* font_sys = NULL;
   struct font_rsrc* font_rsrc = NULL;
   bool is_font_scalable = false;
-  uint16_t line_space = 0;
+  int line_space = 0;
   FONT(system_create(NULL, &font_sys));
   FONT(rsrc_create(font_sys, font_name, &font_rsrc));
   FONT(rsrc_get_line_space(font_rsrc, &line_space));
@@ -64,7 +64,7 @@ main(int argc, char** argv)
   }
 
   /* Build x charset description */
-  uint16_t glyph_min_width = UINT16_MAX;
+  int glyph_min_width = UINT16_MAX;
   const wchar_t* charset =
     L"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     L" &~\"#'{([-|`_\\^@)]=}+$%*,?;.:/!<>";
@@ -77,9 +77,9 @@ main(int argc, char** argv)
   for(i = 0; i < charset_len; ++i) {
     struct font_glyph_desc font_glyph_desc;
     struct font_glyph* font_glyph = NULL;
-    uint16_t width = 0;
-    uint16_t height = 0;
-    uint8_t Bpp = 0;
+    int width = 0;
+    int height = 0;
+    int Bpp = 0;
 
     FONT(rsrc_get_glyph(font_rsrc, charset[i], &font_glyph));
 
@@ -93,7 +93,7 @@ main(int argc, char** argv)
     FONT(glyph_get_bitmap(font_glyph, true, &width, &height, &Bpp, NULL));
     if(width && height ) {
       glyph_bitmap_list[i] = MEM_CALLOC
-        (&mem_default_allocator, (size_t)width*height, (size_t)Bpp);
+        (&mem_default_allocator, (size_t)(width*height), (size_t)Bpp);
       NCHECK(glyph_bitmap_list[i], NULL);
       FONT(glyph_get_bitmap
         (font_glyph, true, &width, &height, &Bpp, glyph_bitmap_list[i]));
@@ -113,7 +113,7 @@ main(int argc, char** argv)
   LP(create(&rbi, rb_ctxt, NULL, &lp));
   LP(font_create(lp, &lp_font));
   LP(font_set_data
-    (lp_font, line_space, (uint32_t)charset_len, lp_font_glyph_desc_list));
+    (lp_font, line_space, (int)charset_len, lp_font_glyph_desc_list));
 
   /* Create the printer */
   struct lp_printer* lp_printer = NULL;

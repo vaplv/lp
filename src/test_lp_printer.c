@@ -17,7 +17,6 @@ main(int argc, char** argv)
   FILE* file = NULL;
   const char* driver_name = NULL;
   const char* font_name = NULL;
-  int err = 0;
   /* Window Manager */
   struct wm_device* wm_dev = NULL;
   struct wm_window* wm_win = NULL;
@@ -37,7 +36,7 @@ main(int argc, char** argv)
 
   if(argc != 3) {
     printf("usage: %s RB_DRIVER FONT\n", argv[0]);
-    goto error;
+    return -1;
   }
   driver_name = argv[1];
   font_name = argv[2];
@@ -45,14 +44,14 @@ main(int argc, char** argv)
   file = fopen(driver_name, "r");
   if(!file) {
     fprintf(stderr, "Invalid driver %s\n", driver_name);
-    goto error;
+    return -1;
   }
   fclose(file);
 
   file = fopen(font_name, "r");
   if(!file) {
     fprintf(stderr, "Invalid font name %s\n", font_name);
-    goto error;
+    return -1;
   }
   fclose(file);
 
@@ -119,11 +118,6 @@ main(int argc, char** argv)
   WM(window_ref_put(wm_win));
 
   CHECK(MEM_ALLOCATED_SIZE(&mem_default_allocator), 0);
-
-exit:
-  return err;
-error:
-  err = -1;
-  goto exit;
+  return 0;
 }
 

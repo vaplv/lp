@@ -26,27 +26,27 @@ CALLBACK(lp_font_callback_T, struct lp_font*);
 /* Descriptor of a glyph to registered against the font */
 struct lp_font_glyph_desc {
    wchar_t character;
-   uint16_t width;
+   int width;
    int bitmap_left;
    int bitmap_top;
    struct {
-     uint16_t width;
-     uint16_t height;
-     uint8_t bytes_per_pixel;
+     int width;
+     int height;
+     int bytes_per_pixel;
      unsigned char* buffer;
    } bitmap;
 };
 
 /* Information on registered glyph */
 struct lp_font_glyph {
-  uint16_t width;
+  int width;
   struct { float x; float y; } tex[2], pos[2];
 };
 
 /* Global font metrics */
 struct lp_font_metrics {
-  uint16_t line_space;
-  uint16_t min_glyph_width;
+  int line_space;
+  int min_glyph_width;
   int min_glyph_pos_y;
 };
 
@@ -75,8 +75,8 @@ lp_font_ref_put
 LP_API enum lp_error
 lp_font_set_data
   (struct lp_font* font,
-   const uint16_t line_space,
-   const uint32_t nb_glyphs,
+   const int line_space,
+   const int nb_glyphs,
    const struct lp_font_glyph_desc* glyph_list);
 
 LP_API enum lp_error
@@ -100,9 +100,9 @@ lp_font_get_texture
 LP_API enum lp_error
 lp_font_get_bitmap_cache
   (const struct lp_font* font,
-   uint32_t* width, /* May be NULL */
-   uint32_t* height, /* May be NULL */
-   uint8_t* bytes_per_pixel, /* May be NULL */
+   int* width, /* May be NULL */
+   int* height, /* May be NULL */
+   int* bytes_per_pixel, /* May be NULL */
    const unsigned char** bitmap_cache); /* May be NULL */
 
 LP_API enum lp_error

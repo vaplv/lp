@@ -20,15 +20,15 @@ main(int argc, char** argv)
   const char* driver_name = NULL;
   const char* font_name = NULL;
   FILE* file = NULL;
-  const uint8_t nb_glyphs = 94;
-  const uint8_t nb_duplicated_glyphs = 5;
+  const int nb_glyphs = 94;
+  const int nb_duplicated_glyphs = 5;
   const int total_nb_glyphs = nb_glyphs + nb_duplicated_glyphs;
   const unsigned char* bmp_cache = NULL;
-  uint32_t w = 0;
-  uint32_t h = 0;
-  uint8_t Bpp = 0;
-  uint16_t min_width = 0;
-  uint16_t line_space = 0;
+  int w = 0;
+  int h = 0;
+  int Bpp = 0;
+  int min_width = 0;
+  int line_space = 0;
   int i = 0;
   int err = 0;
   bool b = false;
@@ -91,15 +91,15 @@ main(int argc, char** argv)
   for(i = 0; i < total_nb_glyphs; ++i) {
     struct font_glyph_desc font_glyph_desc;
     wchar_t character = 33 + (i % nb_glyphs);
-    uint16_t width = 0;
-    uint16_t height = 0;
-    uint8_t Bpp = 0;
+    int width = 0;
+    int height = 0;
+    int Bpp = 0;
 
     FONT(rsrc_get_glyph(font_rsrc, character, &font_glyph));
     FONT(glyph_get_bitmap(font_glyph, true, &width, &height, &Bpp, NULL));
 
     glyph_bitmap_list[i] = MEM_CALLOC
-      (&mem_default_allocator, (size_t)width*height, (size_t)Bpp);
+      (&mem_default_allocator, (size_t)(width*height), (size_t)Bpp);
     NCHECK(glyph_bitmap_list[i], NULL);
     FONT(glyph_get_bitmap
       (font_glyph, true, &width, &height, &Bpp, glyph_bitmap_list[i]));
