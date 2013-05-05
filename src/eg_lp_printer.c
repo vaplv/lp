@@ -127,16 +127,16 @@ main(int argc, char** argv)
     RBI(&rbi, clear
       (rb_ctxt, RB_CLEAR_COLOR_BIT, (float[]){0.05f, 0.05f, 0.05f}, 0.f, 0));
     LP(printer_print_wstring
-      (lp_printer, 50, 70, L">$ ", 
+      (lp_printer, 50, 70, L">$ ",
        (float[]){0.f, 1.f, 0.f}, cur+0, cur+1));
     LP(printer_print_wstring
-      (lp_printer, cur[0], cur[1], L"Hello", 
+      (lp_printer, cur[0], cur[1], L"Hello",
        (float[]){1.f, 1.f, 1.f}, cur+0, cur+1));
     LP(printer_print_wstring
-      (lp_printer, cur[0], cur[1], L" World", 
+      (lp_printer, cur[0], cur[1], L" World",
        (float[]){1.f, 0.f, 0.f}, cur+0, cur+1));
     LP(printer_print_wstring
-      (lp_printer, cur[0], cur[1], L"!", 
+      (lp_printer, cur[0], cur[1], L"!",
        (float[]){0.f, 1.f, 0.f}, cur+0, cur+1));
     LP(printer_flush(lp_printer));
 

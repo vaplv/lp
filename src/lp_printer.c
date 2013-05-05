@@ -354,6 +354,8 @@ release_printer(struct ref* ref)
   printer_rb_shutdown(printer);
   CALLBACK_DISCONNECT(&printer->on_font_data_update);
   scratch_release(&printer->scratch);
+  if(printer->font)
+    LP(font_ref_put(printer->font));
   lp = printer->lp;
   MEM_FREE(lp->allocator, printer);
   LP(ref_put(lp));
@@ -456,7 +458,7 @@ lp_printer_print_wstring
 {
   if(!printer || !wstr || !color || !printer->font)
     return LP_INVALID_ARGUMENT;
-  if(printer->viewport.x1 <= printer->viewport.x0 
+  if(printer->viewport.x1 <= printer->viewport.x0
   || printer->viewport.y1 <= printer->viewport.y0)  /* No printable zone */
     return LP_INVALID_ARGUMENT;
 
@@ -569,8 +571,8 @@ lp_printer_flush(struct lp_printer* printer)
     return LP_NO_ERROR;
 
   /* No printable zone => Draw nothing */
-  if(printer->viewport.x1 <= printer->viewport.x0 
-  || printer->viewport.y1 <= printer->viewport.y0) { 
+  if(printer->viewport.x1 <= printer->viewport.x0
+  || printer->viewport.y1 <= printer->viewport.y0) {
     scratch_clear(&printer->scratch);
     return LP_NO_ERROR;
   }
@@ -579,7 +581,7 @@ lp_printer_flush(struct lp_printer* printer)
   struct rb_context* rb_ctxt = printer->lp->rb_ctxt;
 
   void* data = scratch_buffer(&printer->scratch);
-  const size_t size = 
+  const size_t size =
     4 /* vertices per glyph */ * printer->nb_glyphs * LP_SIZEOF_GLYPH_VERTEX;
   RBI(rbi, buffer_data(printer->glyph_vertex_buffer, 0, (int)size, data));
 
@@ -605,7 +607,7 @@ lp_printer_flush(struct lp_printer* printer)
     .blend_op_RGB = RB_BLEND_OP_ADD,
     .blend_op_Alpha = RB_BLEND_OP_ADD
   };
-  const float scale[3] = { 
+  const float scale[3] = {
     2.f/(float)viewport_desc.width,
     2.f/(float)viewport_desc.height,
     1.f
