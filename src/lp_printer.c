@@ -337,6 +337,7 @@ setup_font(struct lp_printer* printer)
 static void
 on_font_data_update(struct lp_font* font, void* data)
 {
+  (void)font;
   struct lp_printer* printer = data;
   ASSERT(font && data && printer->font == font);
   setup_font(printer);
