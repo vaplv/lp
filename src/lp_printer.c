@@ -16,6 +16,7 @@
 #define LP_GLYPH_ATTRIBS_COUNT 3
 #define LP_GLYPH_VERTICES_COUNT 4
 #define LP_GLYPH_INDICES_COUNT 6
+#define LP_GLYPH_COUNT_MAX 4096 /* Count of buffered glyphes */
 
 #define LP_TAB_SPACES_COUNT 4 /* This may be a configurable parameter */
 
@@ -330,7 +331,7 @@ static void
 setup_font(struct lp_printer* printer)
 {
   ASSERT(printer);
-  printer_storage(printer, 4096);
+  printer_storage(printer, LP_GLYPH_COUNT_MAX);
 }
 
 static void
@@ -449,21 +450,21 @@ lp_printer_print_wstring
    const int x,
    const int y,
    const wchar_t* wstr,
-   const float color[3])
+   const float color[3],
+   int* cur_x,
+   int* cur_y)
 {
   if(!printer || !wstr || !color || !printer->font)
     return LP_INVALID_ARGUMENT;
   if(printer->viewport.x1 <= printer->viewport.x0 
   || printer->viewport.y1 <= printer->viewport.y0)  /* No printable zone */
     return LP_INVALID_ARGUMENT;
-  if(x >= printer->viewport.x1 || y >= printer->viewport.y1) /* Out of bounds */
-    return LP_NO_ERROR;
 
   struct lp_font_metrics font_metrics;
   LP(font_get_metrics(printer->font, &font_metrics));
 
-  const int line_width = printer->viewport.x1 - x;
-  int line_width_remaining = line_width;
+  const int line_width = printer->viewport.x1 - printer->viewport.x0;
+  int line_width_remaining = MAX(printer->viewport.x1 - x, 0);
   int line_x = x;
   int line_y = y;
 
@@ -491,10 +492,12 @@ lp_printer_print_wstring
       line_width_remaining -= glyph_width_adjusted;
     } else { /* Wrap the line */
       line_width_remaining = line_width;
-      line_x = x;
-      line_y = line_y + font_metrics.line_space;
-      if(glyph_width_adjusted == INT_MAX) { /* <=> New line */
+      line_x = printer->viewport.x0;
+      line_y = line_y - font_metrics.line_space;
+      if(glyph_width_adjusted > INT_MAX) { /* <=> New line */
         continue;
+      } else if(line_width_remaining >= glyph_width_adjusted) {
+        line_width_remaining = MAX(line_width_remaining-glyph_width_adjusted,0);
       }
     }
 
@@ -547,6 +550,12 @@ lp_printer_print_wstring
       LP(printer_flush(printer));
     }
   }
+
+  if(cur_x)
+    *cur_x = line_x;
+  if(cur_y)
+    *cur_y = line_y;
+
   return LP_NO_ERROR;
 }
 

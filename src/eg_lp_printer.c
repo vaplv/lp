@@ -6,6 +6,7 @@
 #include <snlsys/math.h>
 #include <snlsys/mem_allocator.h>
 #include <wm/wm_device.h>
+#include <wm/wm_input.h>
 #include <wm/wm_window.h>
 #include <stdbool.h>
 #include <string.h>
@@ -39,7 +40,7 @@ main(int argc, char** argv)
   struct wm_device* device = NULL;
   struct wm_window* window = NULL;
   const struct wm_window_desc win_desc =
-    { .width = 800, .height = 600, .fullscreen = false };
+    { .width = 640, .height = 480, .fullscreen = false };
   WM(create_device(NULL, &device));
   WM(create_window(device, &win_desc, &window));
 
@@ -119,14 +120,30 @@ main(int argc, char** argv)
   LP(printer_create(lp, &lp_printer));
   LP(printer_set_font(lp_printer, lp_font));
   LP(printer_set_viewport(lp_printer, 0, 0, win_desc.width, win_desc.height));
-  for(;;) {
+  enum wm_state esc = WM_STATE_UNKNOWN;
+  do {
+    int cur[2] = { 0, 0 };
+
     RBI(&rbi, clear
-      (rb_ctxt, RB_CLEAR_COLOR_BIT, (float[]){0.f, 0.f, 0.f}, 0.f, 0));
+      (rb_ctxt, RB_CLEAR_COLOR_BIT, (float[]){0.05f, 0.05f, 0.05f}, 0.f, 0));
     LP(printer_print_wstring
-      (lp_printer, 50, 50, L"Hello world é", (float[]){1.f, 1.f, 1.f}));
+      (lp_printer, 50, 70, L">$ ", 
+       (float[]){0.f, 1.f, 0.f}, cur+0, cur+1));
+    LP(printer_print_wstring
+      (lp_printer, cur[0], cur[1], L"Hello", 
+       (float[]){1.f, 1.f, 1.f}, cur+0, cur+1));
+    LP(printer_print_wstring
+      (lp_printer, cur[0], cur[1], L" World", 
+       (float[]){1.f, 0.f, 0.f}, cur+0, cur+1));
+    LP(printer_print_wstring
+      (lp_printer, cur[0], cur[1], L"!", 
+       (float[]){0.f, 1.f, 0.f}, cur+0, cur+1));
     LP(printer_flush(lp_printer));
+
     WM(swap(window));
-  }
+    WM(flush_events(device));
+    WM(get_key_state(device, WM_KEY_ESC, &esc));
+  } while(esc != WM_PRESS);
 
   /* Release data */
   for(i = 0; i < charset_len; ++i) {

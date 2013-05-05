@@ -43,7 +43,9 @@ lp_printer_print_wstring
    const int x,
    const int y,
    const wchar_t* wstr,
-   const float color[3]);
+   const float color[3],
+   int* cur_x, /* May be NULL */
+   int* cur_y); /* May be NULL */
 
 LP_API enum lp_error
 lp_printer_flush
