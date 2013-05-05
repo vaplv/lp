@@ -22,7 +22,7 @@ struct lp_font {
   /* Miscellaneous data */
   struct ref ref; /* Ref counting */
   struct lp* lp; /* Owner ship on the system frow which the font was created */
-  SIGNALS_LIST(signals, lp_font_callback_T, LP_FONT_SIGNALS_COUNT); 
+  SIGNALS_LIST(signals, lp_font_callback_T, LP_FONT_SIGNALS_COUNT);
 
   /* Image and its associated texture in which font glyphes are stored */
   struct {
@@ -541,7 +541,7 @@ lp_font_set_data
   for(i = 0; i < nb_glyphs; ++i) {
     const int16_t bmp_top = (int16_t)glyph_lst[i].bitmap_top;
     ASSERT
-      (  glyph_lst[i].bitmap_top <= INT16_MAX 
+      (  glyph_lst[i].bitmap_top <= INT16_MAX
       && glyph_lst[i].bitmap_top >= INT16_MIN );
 
     font->min_glyph_width = MIN(font->min_glyph_width, glyph_lst[i].width);
@@ -696,7 +696,9 @@ lp_font_get_glyph
    const wchar_t character,
    struct lp_font_glyph* dst_glyph)
 {
-  struct lp_glyph* glyph = NULL;
+  struct lp_font_glyph* glyph = NULL;
+  struct lp_font_glyph font_glyph_default;
+  memset(&font_glyph_default, 0, sizeof(struct lp_font_glyph));
 
   if(!font || !dst_glyph)
     return LP_INVALID_ARGUMENT;
@@ -706,7 +708,9 @@ lp_font_get_glyph
   if(glyph == NULL) {
     SL(hash_table_find
       (font->glyph_htbl, (wchar_t[]){DEFAULT_CHAR}, (void**)&glyph));
-    ASSERT(NULL != glyph);
+    if( glyph == NULL ) {
+      glyph = &font_glyph_default;
+    }
   }
   memcpy(dst_glyph, glyph, sizeof(struct lp_font_glyph));
 

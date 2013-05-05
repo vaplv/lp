@@ -419,6 +419,7 @@ lp_printer_set_font(struct lp_printer* printer, struct lp_font* font)
       LP(font_ref_put(printer->font));
     }
     LP(font_ref_get(font));
+    CALLBACK_DISCONNECT(&printer->on_font_data_update);
     LP(font_signal_connect
       (font, LP_FONT_SIGNAL_DATA_UPDATE, &printer->on_font_data_update));
     printer->font = font;
