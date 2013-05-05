@@ -16,7 +16,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEFAULT_CHAR ((wchar_t)~0)
+#define LP_FONT_DEFAULT_CHAR ((wchar_t)~0)
+#define LP_FONT_GLYPH_BORDER 1
 
 struct lp_font {
   /* Miscellaneous data */
@@ -78,8 +79,8 @@ struct node {
   int extendable_flag;
 };
 
-#define GLYPH_BORDER 1
-#define IS_LEAF(n) (!((n)->left || (n)->right))
+/* Helper macro */
+#define NODE_IS_LEAF(n) (!((n)->left || (n)->right))
 
 static struct node*
 insert_rect
@@ -92,14 +93,14 @@ insert_rect
 
   if(!node) {
     ret_node = NULL;
-  } else if(!IS_LEAF(node)) {
+  } else if(!NODE_IS_LEAF(node)) {
     ret_node = insert_rect(allocator, node->left, width, height);
     if(!ret_node && node->right)
       ret_node = insert_rect(allocator, node->right, width, height);
   } else {
     /* Adjust the width and height in order to take care of the glyph border */
-    const int width_adjusted = width + GLYPH_BORDER;
-    const int height_adjusted = height + GLYPH_BORDER;
+    const int width_adjusted = width + LP_FONT_GLYPH_BORDER;
+    const int height_adjusted = height + LP_FONT_GLYPH_BORDER;
 
     if(width_adjusted > node->width || height_adjusted > node->height) {
       /* The leaf is too small to store the rectangle. */
@@ -162,7 +163,7 @@ static void
 extend_width(struct node* node, const int size)
 {
   ASSERT(node);
-  if(!IS_LEAF(node)) {
+  if(!NODE_IS_LEAF(node)) {
     extend_width(node->left, size);
     extend_width(node->right, size);
   } else {
@@ -176,7 +177,7 @@ static void
 extend_height(struct node* node, const int size)
 {
   ASSERT(node);
-  if(!IS_LEAF(node)) {
+  if(!NODE_IS_LEAF(node)) {
     extend_height(node->left, size);
     extend_height(node->right, size);
   } else {
@@ -236,8 +237,8 @@ compute_initial_cache_size
   }
   /* We multiply the max size required by a glyph by 4 in each dimension in
    * order to store at least 16 glyphs in the texture. */
-  *out_width = (width + GLYPH_BORDER) * 4;
-  *out_height = (height + GLYPH_BORDER) * 4;
+  *out_width = (width + LP_FONT_GLYPH_BORDER) * 4;
+  *out_height = (height + LP_FONT_GLYPH_BORDER) * 4;
 }
 
 static void
@@ -247,18 +248,18 @@ fill_font_cache
    const struct lp_font_glyph_desc* glyph_list)
 {
   ASSERT(node && font);
-  if(!IS_LEAF(node)) {
+  if(!NODE_IS_LEAF(node)) {
     struct lp_font_glyph* glyph = NULL;
     const struct lp_font_glyph_desc* glyph_desc = glyph_list + node->id;
     const int cache_Bpp = font->cache_img.Bpp;
     const int cache_pitch = font->cache_img.width * cache_Bpp;
     const float rcp_cache_width = 1.f / (float)font->cache_img.width;
     const float rcp_cache_height = 1.f / (float)font->cache_img.height;
-    const int w = node->width - GLYPH_BORDER;
-    const int h = node->height - GLYPH_BORDER;
-    const int x = node->x == 0 ? GLYPH_BORDER : node->x;
-    const int y = node->y == 0 ? GLYPH_BORDER : node->y;
-    const int glyph_bmp_size = 
+    const int w = node->width - LP_FONT_GLYPH_BORDER;
+    const int h = node->height - LP_FONT_GLYPH_BORDER;
+    const int x = node->x == 0 ? LP_FONT_GLYPH_BORDER : node->x;
+    const int y = node->y == 0 ? LP_FONT_GLYPH_BORDER : node->y;
+    const int glyph_bmp_size =
       glyph_desc->bitmap.width
     * glyph_desc->bitmap.height
     * glyph_desc->bitmap.bytes_per_pixel;
@@ -359,7 +360,7 @@ create_default_glyph
   enum lp_error lp_err = LP_NO_ERROR;
 
   ASSERT(glyph && allocator);
-  glyph->character = DEFAULT_CHAR;
+  glyph->character = LP_FONT_DEFAULT_CHAR;
   glyph->width = width;
   glyph->bitmap_left = 0;
   glyph->bitmap_top = 0;
@@ -422,7 +423,7 @@ release_font(struct ref* ref)
   LP(ref_put(lp));
 }
 
-#undef IS_LEAF
+#undef NODE_IS_LEAF
 
 /*******************************************************************************
  *
@@ -707,7 +708,7 @@ lp_font_get_glyph
 
   if(glyph == NULL) {
     SL(hash_table_find
-      (font->glyph_htbl, (wchar_t[]){DEFAULT_CHAR}, (void**)&glyph));
+      (font->glyph_htbl, (wchar_t[]){LP_FONT_DEFAULT_CHAR}, (void**)&glyph));
     if( glyph == NULL ) {
       glyph = &font_glyph_default;
     }
@@ -761,5 +762,6 @@ lp_font_signal_connect
   return LP_NO_ERROR;
 }
 
-#undef GLYPH_BORDER
+#undef LP_FONT_DEFAULT_CHAR
+#undef LP_FONT_GLYPH_BORDER
 
