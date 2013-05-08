@@ -8,6 +8,8 @@
 #include <wm/wm_device.h>
 #include <wm/wm_input.h>
 #include <wm/wm_window.h>
+
+#include <limits.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -64,7 +66,7 @@ main(int argc, char** argv)
   }
 
   /* Build x charset description */
-  int glyph_min_width = UINT16_MAX;
+  int glyph_min_width = INT_MAX;
   const wchar_t* charset =
     L"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     L" &~\"#'{([-|`_\\^@)]=}+$%*,?;.:/!<>";

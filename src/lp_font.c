@@ -537,14 +537,10 @@ lp_font_set_data
 
   /* Retrieve global font metrics. */
   font->line_space = line_space;
-  font->min_glyph_width = UINT16_MAX;
-  font->min_glyph_pos_y = INT16_MAX;
+  font->min_glyph_width = INT_MAX;
+  font->min_glyph_pos_y = INT_MAX;
   for(i = 0; i < nb_glyphs; ++i) {
     const int bmp_top = glyph_lst[i].bitmap_top;
-    ASSERT
-      (  glyph_lst[i].bitmap_top <= INT16_MAX
-      && glyph_lst[i].bitmap_top >= INT16_MIN );
-
     font->min_glyph_width = MIN(font->min_glyph_width, glyph_lst[i].width);
     font->min_glyph_pos_y = MIN(font->min_glyph_pos_y, bmp_top);
     max_bmp_width = MAX(max_bmp_width, glyph_lst[i].bitmap.width);
